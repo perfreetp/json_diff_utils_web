@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import JsonDiffViewer from './JsonDiffViewer.vue'
 import JsonTreeView from './JsonTreeView.vue'
 import { compareJson, formatValue, DiffType } from '../utils/jsonDiff.js'
@@ -35,6 +35,40 @@ const selectedPath = ref('')
 const collapsedPaths = ref(new Set())
 const highlightPath = ref('')
 const parseError = ref(null)
+
+const inputSectionHeight = ref(200)
+const isResizing = ref(false)
+let startY = 0
+let startHeight = 0
+
+function startResize(event) {
+  isResizing.value = true
+  startY = event.clientY
+  startHeight = inputSectionHeight.value
+  document.addEventListener('mousemove', onResize)
+  document.addEventListener('mouseup', stopResize)
+  document.body.style.cursor = 'ns-resize'
+  document.body.style.userSelect = 'none'
+}
+
+function onResize(event) {
+  if (!isResizing.value) return
+  const deltaY = event.clientY - startY
+  const newHeight = startHeight + deltaY
+  inputSectionHeight.value = Math.max(100, Math.min(600, newHeight))
+}
+
+function stopResize() {
+  isResizing.value = false
+  document.removeEventListener('mousemove', onResize)
+  document.removeEventListener('mouseup', stopResize)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
+onUnmounted(() => {
+  stopResize()
+})
 
 const stats = computed(() => {
   const results = diffResults.value
@@ -128,21 +162,24 @@ function expandAll() {
   collapsedPaths.value.clear()
 }
 
-function formatJson(input) {
+function formatJson(index) {
+  const inputRef = index === 1 ? json1Input : json2Input
   try {
-    const obj = JSON.parse(input.value)
-    input.value = JSON.stringify(obj, null, 2)
+    const obj = JSON.parse(inputRef.value)
+    inputRef.value = JSON.stringify(obj, null, 2)
   } catch (e) {
     parseError.value = `JSON 格式化错误: ${e.message}`
   }
 }
 
-function copyJson(input) {
-  navigator.clipboard?.writeText(input.value)
+function copyJson(index) {
+  const inputRef = index === 1 ? json1Input : json2Input
+  navigator.clipboard?.writeText(inputRef.value)
 }
 
-function clearJson(input) {
-  input.value = ''
+function clearJson(index) {
+  const inputRef = index === 1 ? json1Input : json2Input
+  inputRef.value = ''
 }
 </script>
 
@@ -169,18 +206,18 @@ function clearJson(input) {
     </header>
 
     <main class="main-content">
-      <section class="input-section">
+      <section class="input-section" :style="{ height: inputSectionHeight + 'px', minHeight: inputSectionHeight + 'px' }">
         <div class="input-panel">
           <div class="panel-header">
             <h2>原始 JSON</h2>
             <div class="panel-actions">
-              <button class="icon-btn" @click="formatJson(json1Input)" title="格式化">
+              <button class="icon-btn" @click="formatJson(1)" title="格式化">
                 {}
               </button>
-              <button class="icon-btn" @click="copyJson(json1Input)" title="复制">
+              <button class="icon-btn" @click="copyJson(1)" title="复制">
                 📋
               </button>
-              <button class="icon-btn" @click="clearJson(json1Input)" title="清空">
+              <button class="icon-btn" @click="clearJson(1)" title="清空">
                 ✕
               </button>
             </div>
@@ -197,13 +234,13 @@ function clearJson(input) {
           <div class="panel-header">
             <h2>目标 JSON</h2>
             <div class="panel-actions">
-              <button class="icon-btn" @click="formatJson(json2Input)" title="格式化">
+              <button class="icon-btn" @click="formatJson(2)" title="格式化">
                 {}
               </button>
-              <button class="icon-btn" @click="copyJson(json2Input)" title="复制">
+              <button class="icon-btn" @click="copyJson(2)" title="复制">
                 📋
               </button>
-              <button class="icon-btn" @click="clearJson(json2Input)" title="清空">
+              <button class="icon-btn" @click="clearJson(2)" title="清空">
                 ✕
               </button>
             </div>
@@ -216,6 +253,14 @@ function clearJson(input) {
           ></textarea>
         </div>
       </section>
+
+      <div 
+        class="resize-handle"
+        :class="{ active: isResizing }"
+        @mousedown="startResize"
+      >
+        <div class="resize-line"></div>
+      </div>
 
       <div v-if="parseError" class="error-message">
         {{ parseError }}

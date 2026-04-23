@@ -100,6 +100,38 @@ body {
   flex-direction: row;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
+  height: 200px;
+  min-height: 100px;
+}
+
+.resize-handle {
+  height: 6px;
+  background-color: var(--bg-tertiary);
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.resize-handle:hover,
+.resize-handle.active {
+  background-color: var(--accent-color);
+}
+
+.resize-line {
+  width: 40px;
+  height: 3px;
+  background-color: var(--border-color);
+  border-radius: 2px;
+}
+
+.resize-handle:hover .resize-line,
+.resize-handle.active .resize-line {
+  background-color: #fff;
 }
 
 .input-panel {
@@ -151,9 +183,9 @@ body {
 
 .json-input {
   flex: 1;
-  min-height: 150px;
-  max-height: 250px;
-  resize: vertical;
+  min-height: 0;
+  height: auto;
+  resize: none;
   background-color: var(--bg-color);
   border: none;
   color: var(--text-color);
